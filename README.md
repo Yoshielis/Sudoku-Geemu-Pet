@@ -35,6 +35,7 @@ keymap -> external tools -> seleccionar la herramienta creada
 
 esto le aparecera que seleccione un boton de acceso, seleccionara el de su preferencia
 - como sugerencia evite aquellos botones que ya tienen alguna funcionalidad
+- adicional entrar al editor de este documento ya que cambia las partes a copiar por la simboliogia
 ![img_1.png](img_1.png)
 
 
