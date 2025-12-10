@@ -1,4 +1,9 @@
-class Record {
+import java.util.*;
+import java.io.*;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+
+class Record implements Serializable {
     private String nombre;
     private int puntos;
 
@@ -7,7 +12,6 @@ class Record {
         this.puntos = puntos;
     }
 
-    // Getters
     public String getNombre() { return nombre; }
     public int getPuntos() { return puntos; }
 }
