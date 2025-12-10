@@ -7,35 +7,38 @@ class Sudoku implements Serializable {
     private int[][] tablero;
     private int[][] solucion;
     private boolean[][] editable;
-    private Scanner scanner;
     private int errores;
 
     public Sudoku() {
         tablero = new int[9][9];
         solucion = new int[9][9];
         editable = new boolean[9][9];
-        scanner = new Scanner(System.in);
         errores = 0;
     }
 
-    public boolean jugar(Mascota mascota) {
-        int filaActual = 0, colActual = 0;
+    public boolean jugar(Usuario usuario, Mascota mascota) {
+        Scanner scanner = new Scanner(System.in);
+        boolean salir = false;
         boolean completado = false;
+        String mensaje = "";
 
-        while (!completado) {
-            mostrarTableroMejorado(filaActual, colActual);
+        while (!completado && !salir) {
+            // Limpiar y mostrar la pantalla
+            mostrarPantallaSudoku(usuario, mascota, mensaje);
 
-            ConsoleUtils.setCursorPosition(5, 22);
-            System.out.print("Comando (fila,col,valor) o 'pista'/'guardar'/'salir': ");
+            // Leer comando
+            System.out.print("\nComando (fila,col,valor) o 'pista'/'guardar'/'salir': ");
             String input = scanner.nextLine().trim();
 
             if (input.equalsIgnoreCase("salir")) {
-                return false;
+                salir = true;
+                mensaje = "Partida guardada. ¡Vuelve pronto!";
+                continue;
             }
 
             if (input.equalsIgnoreCase("guardar")) {
                 guardarEstado("sudoku_actual.dat");
-                ConsoleUtils.mostrarMensaje("Sudoku guardado temporalmente.", 40, 23);
+                mensaje = "Sudoku guardado temporalmente.";
                 continue;
             }
 
@@ -43,18 +46,21 @@ class Sudoku implements Serializable {
                 if (mascota.getFelicidad() > 50) {
                     int[] pista = obtenerPista();
                     if (pista != null) {
-                        ConsoleUtils.mostrarMensaje("Pista: Intenta " + pista[2] +
-                                " en (" + (pista[0]+1) + "," + (pista[1]+1) + ")", 50, 23);
+                        mensaje = "Pista: Prueba " + pista[2] + " en (" +
+                                (pista[0]+1) + "," + (pista[1]+1) + ")";
+                    } else {
+                        mensaje = "No hay pistas disponibles.";
                     }
                 } else {
-                    ConsoleUtils.mostrarMensaje("Tu mascota no está lo suficientemente feliz para dar pistas.", 60, 23);
+                    mensaje = mascota.getNombre() + " no está feliz para dar pistas.";
                 }
                 continue;
             }
 
+            // Procesar movimiento normal
             String[] partes = input.split(",");
             if (partes.length != 3) {
-                ConsoleUtils.mostrarMensaje("Formato incorrecto. Usa: fila,columna,valor", 50, 23);
+                mensaje = "Formato: fila,columna,valor (ej: 5,3,7)";
                 continue;
             }
 
@@ -63,92 +69,153 @@ class Sudoku implements Serializable {
                 int columna = Integer.parseInt(partes[1]) - 1;
                 int valor = Integer.parseInt(partes[2]);
 
-                filaActual = fila;
-                colActual = columna;
+                mensaje = procesarMovimiento(fila, columna, valor, mascota);
 
-                String mensajeError = validarMovimiento(fila, columna, valor);
-
-                if (mensajeError.isEmpty()) {
-                    tablero[fila][columna] = valor;
-                    ConsoleUtils.mostrarMensaje("✓ Movimiento válido!", 40, 23);
-
-                    // Animar la celda
+                if (mensaje.startsWith("✓")) {
+                    // Animación simple
                     animarCelda(fila, columna, valor);
-
-                } else {
-                    ConsoleUtils.mostrarMensaje("✗ " + mensajeError, 60, 23);
-                    errores++;
-                    mascota.reaccionarError();
                 }
 
+                // Verificar si está completado
                 completado = verificarCompletado();
+                if (completado) {
+                    mensaje = "¡Sudoku completado! ¡Felicidades!";
+                }
 
             } catch (NumberFormatException e) {
-                ConsoleUtils.mostrarMensaje("Entrada no válida. Usa números.", 50, 23);
+                mensaje = "Entrada no válida. Usa números.";
+            } catch (ArrayIndexOutOfBoundsException e) {
+                mensaje = "Posición fuera de rango (1-9).";
             }
         }
 
-        return true;
+        // Mostrar resultado final una vez
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
+        mostrarPantallaSudoku(usuario, mascota, mensaje);
+
+        return completado;
     }
 
-    private String validarMovimiento(int fila, int col, int valor) {
-        if (fila < 0 || fila >= 9 || col < 0 || col >= 9) {
-            return "Posición fuera de rango (1-9)";
+    private String procesarMovimiento(int fila, int columna, int valor, Mascota mascota) {
+        // Validaciones básicas
+        if (fila < 0 || fila >= 9 || columna < 0 || columna >= 9) {
+            errores++;
+            mascota.reaccionarError();
+            return "✗ Posición fuera de rango (1-9)";
         }
 
-        if (!editable[fila][col]) {
-            return "Esta celda no es editable (número fijo)";
+        if (!editable[fila][columna]) {
+            errores++;
+            mascota.reaccionarError();
+            return "✗ Esta celda no es editable (número fijo)";
         }
 
         if (valor < 1 || valor > 9) {
-            return "Valor debe ser entre 1-9";
+            errores++;
+            mascota.reaccionarError();
+            return "✗ Valor debe ser entre 1-9";
         }
 
         // Verificar fila
         for (int j = 0; j < 9; j++) {
-            if (j != col && tablero[fila][j] == valor) {
-                return "Número " + valor + " ya existe en la fila " + (fila+1);
+            if (j != columna && tablero[fila][j] == valor) {
+                errores++;
+                mascota.reaccionarError();
+                return "✗ Número " + valor + " ya existe en la fila " + (fila+1);
             }
         }
 
         // Verificar columna
         for (int i = 0; i < 9; i++) {
-            if (i != fila && tablero[i][col] == valor) {
-                return "Número " + valor + " ya existe en la columna " + (col+1);
+            if (i != fila && tablero[i][columna] == valor) {
+                errores++;
+                mascota.reaccionarError();
+                return "✗ Número " + valor + " ya existe en la columna " + (columna+1);
             }
         }
 
         // Verificar región 3x3
         int inicioFila = fila - fila % 3;
-        int inicioCol = col - col % 3;
+        int inicioCol = columna - columna % 3;
 
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
                 int actualFila = inicioFila + i;
                 int actualCol = inicioCol + j;
-                if (!(actualFila == fila && actualCol == col) &&
+                if (!(actualFila == fila && actualCol == columna) &&
                         tablero[actualFila][actualCol] == valor) {
-                    return "Número " + valor + " ya existe en la región 3x3";
+                    errores++;
+                    mascota.reaccionarError();
+                    return "✗ Número " + valor + " ya existe en la región 3x3";
                 }
             }
         }
 
-        return ""; // Válido
+        // Movimiento válido
+        tablero[fila][columna] = valor;
+        return "✓ Movimiento válido!";
     }
 
-    private void animarCelda(int fila, int col, int valor) {
-        int x = 20 + col * 4;
-        int y = 5 + fila * 2;
+    private void animarCelda(int fila, int columna, int valor) {
+        // Simular animación simple - mostrar mensaje
+        System.out.println("\n¡Celda (" + (fila+1) + "," + (columna+1) + ") actualizada con " + valor + "!");
+        try { Thread.sleep(300); } catch (InterruptedException e) {}
+    }
 
-        for (int i = 0; i < 3; i++) {
-            ConsoleUtils.setCursorPosition(x, y);
-            System.out.print("[" + valor + "]");
-            try { Thread.sleep(100); } catch (InterruptedException e) {}
+    private void mostrarPantallaSudoku(Usuario usuario, Mascota mascota, String mensaje) {
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
 
-            ConsoleUtils.setCursorPosition(x, y);
-            System.out.print(" " + valor + " ");
-            try { Thread.sleep(100); } catch (InterruptedException e) {}
+        System.out.println("╔══════════════════════════════════════════════════════════════════════════╗");
+        System.out.println("║                               SUDOKU                                     ║");
+        System.out.println("╚══════════════════════════════════════════════════════════════════════════╝\n");
+
+        // Mostrar información del jugador
+        System.out.println("Jugador: " + usuario.getNombre() + " | Puntos: " + usuario.getPuntos() +
+                " | Errores: " + errores);
+        System.out.println("Mascota: " + mascota.getNombre() + " [" + mascota.getEstadoEmocional() +
+                "] | Felicidad: " + mascota.getFelicidad() + "%");
+
+        System.out.println("\n" + mensaje);
+        System.out.println();
+
+        // Mostrar tablero
+        System.out.println("     1   2   3    4   5   6    7   8   9");
+        System.out.println("   ╔═══-═══-═══╦═══-═══-═══╦═══-═══-═══╗");
+
+        for (int i = 0; i < 9; i++) {
+            System.out.print(" " + (i+1) + " ║");
+            for (int j = 0; j < 9; j++) {
+                if (tablero[i][j] == 0) {
+                    System.out.print("   ");
+                } else {
+                    if (!editable[i][j]) {
+                        System.out.print("[" + tablero[i][j] + "]");
+                    } else {
+                        System.out.print(" " + tablero[i][j] + " ");
+                    }
+                }
+
+                if (j == 2 || j == 5) {
+                    System.out.print("║");
+                } else if (j < 8) {
+                    System.out.print("│");
+                }
+            }
+            System.out.println("║");
+
+            if (i == 2 || i == 5) {
+                System.out.println("   ╠═══|═══|═══*═══|═══|═══*═══|═══|═══╣");
+            } else if (i < 8) {
+                System.out.println("   |───┼───┼───*───┼───┼───*───┼───┼───|");
+            }
         }
+        System.out.println("   ╚═══-═══-═══*═══-═══-═══*═══-═══-═══╝");
+
+        System.out.println("\n╔══════════════════════════════════════════════════════════════════════════╗");
+        System.out.println("║ COMANDOS: fila,col,valor | pista | guardar | salir                       ║");
+        System.out.println("╚══════════════════════════════════════════════════════════════════════════╝");
     }
 
     public int[] obtenerPista() {
@@ -158,7 +225,43 @@ class Sudoku implements Serializable {
             for (int j = 0; j < 9; j++) {
                 if (tablero[i][j] == 0 && editable[i][j]) {
                     for (int num = 1; num <= 9; num++) {
-                        if (validarMovimiento(i, j, num).isEmpty()) {
+                        // Verificar si es válido
+                        boolean valido = true;
+
+                        // Fila
+                        for (int k = 0; k < 9; k++) {
+                            if (tablero[i][k] == num) {
+                                valido = false;
+                                break;
+                            }
+                        }
+
+                        // Columna
+                        if (valido) {
+                            for (int k = 0; k < 9; k++) {
+                                if (tablero[k][j] == num) {
+                                    valido = false;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Región 3x3
+                        if (valido) {
+                            int inicioFila = i - i % 3;
+                            int inicioCol = j - j % 3;
+                            for (int k = 0; k < 3; k++) {
+                                for (int l = 0; l < 3; l++) {
+                                    if (tablero[inicioFila + k][inicioCol + l] == num) {
+                                        valido = false;
+                                        break;
+                                    }
+                                }
+                                if (!valido) break;
+                            }
+                        }
+
+                        if (valido) {
                             posibles.add(new int[]{i, j, num});
                         }
                     }
@@ -174,15 +277,27 @@ class Sudoku implements Serializable {
     }
 
     public void generarPuzzle(int celdasVacias) {
-        generarSolucionCompleta();
+        // Generar solución completa
+        for (int i = 0; i < 9; i++) {
+            Arrays.fill(solucion[i], 0);
+        }
 
+        // Llenar diagonal principal
+        Random random = new Random();
+        for (int i = 0; i < 9; i += 3) {
+            llenarCaja(i, i);
+        }
+
+        // Resolver el resto
+        resolverSudoku(0, 0);
+
+        // Copiar solución al tablero
         for (int i = 0; i < 9; i++) {
             System.arraycopy(solucion[i], 0, tablero[i], 0, 9);
         }
 
-        Random random = new Random();
+        // Remover celdas aleatoriamente
         int removidas = 0;
-
         while (removidas < celdasVacias) {
             int fila = random.nextInt(9);
             int columna = random.nextInt(9);
@@ -194,28 +309,13 @@ class Sudoku implements Serializable {
             }
         }
 
+        // Marcar celdas no editables
         for (int i = 0; i < 9; i++) {
             for (int j = 0; j < 9; j++) {
                 if (tablero[i][j] != 0) {
                     editable[i][j] = false;
                 }
             }
-        }
-    }
-
-    private boolean generarSolucionCompleta() {
-        for (int i = 0; i < 9; i++) {
-            Arrays.fill(solucion[i], 0);
-        }
-
-        llenarDiagonal();
-        return resolverSudoku(0, 0);
-    }
-
-    private void llenarDiagonal() {
-        Random random = new Random();
-        for (int i = 0; i < 9; i += 3) {
-            llenarCaja(i, i);
         }
     }
 
@@ -289,68 +389,13 @@ class Sudoku implements Serializable {
         return true;
     }
 
-    private void mostrarTableroMejorado(int filaDestacada, int colDestacada) {
-        ConsoleUtils.clearScreen();
-        ConsoleUtils.dibujarMarco(50, 21);
-
-        ConsoleUtils.setCursorPosition(18, 2);
-        System.out.println("=== SUDOKU ===");
-        ConsoleUtils.setCursorPosition(5, 3);
-        System.out.println("Errores: " + errores + " | Usa 'pista' para ayuda");
-
-        ConsoleUtils.setCursorPosition(15, 4);
-        System.out.println("    1   2   3    4   5   6    7   8   9");
-        ConsoleUtils.setCursorPosition(15, 5);
-        System.out.println("  ╔═══╤═══╤═══╦═══╤═══╤═══╦═══╤═══╤═══╗");
-
-        for (int i = 0; i < 9; i++) {
-            ConsoleUtils.setCursorPosition(15, 6 + i*2);
-            System.out.print((i+1) + " ║ ");
-
-            for (int j = 0; j < 9; j++) {
-                String contenido;
-                if (tablero[i][j] == 0) {
-                    contenido = " ";
-                } else {
-                    contenido = String.valueOf(tablero[i][j]);
-                }
-
-                // Destacar celda actual
-                if (i == filaDestacada && j == colDestacada && tablero[i][j] == 0) {
-                    System.out.print("[" + contenido + "]");
-                } else if (!editable[i][j]) {
-                    System.out.print("[" + contenido + "]"); // Números fijos
-                } else {
-                    System.out.print(" " + contenido + " ");
-                }
-
-                if (j == 2 || j == 5) {
-                    System.out.print(" ║ ");
-                } else if (j < 8) {
-                    System.out.print(" │ ");
-                }
-            }
-            System.out.print(" ║");
-
-            ConsoleUtils.setCursorPosition(15, 7 + i*2);
-            if (i == 2 || i == 5) {
-                System.out.println("  ╠═══╪═══╪═══╬═══╪═══╪═══╬═══╪═══╪═══╣");
-            } else if (i < 8) {
-                System.out.println("  ╟───┼───┼───╫───┼───┼───╫───┼───┼───╢");
-            }
-        }
-
-        ConsoleUtils.setCursorPosition(15, 24);
-        System.out.println("  ╚═══╧═══╧═══╩═══╧═══╧═══╩═══╧═══╧═══╝");
-    }
-
     public void guardarEstado(String nombreArchivo) {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(nombreArchivo))) {
             oos.writeObject(tablero);
             oos.writeObject(editable);
             oos.writeInt(errores);
         } catch (IOException e) {
-            e.printStackTrace();
+            // Silenciar error para el usuario
         }
     }
 

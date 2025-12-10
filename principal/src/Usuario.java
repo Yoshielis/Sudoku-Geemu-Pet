@@ -28,15 +28,15 @@ class Usuario implements Serializable {
     private void verificarLogros() {
         if (puntos >= 500 && !logros.contains("Principiante")) {
             logros.add("Principiante");
-            ConsoleUtils.mostrarMensaje("¡Logro desbloqueado: Principiante!", 40, 20);
+            System.out.println("¡Logro desbloqueado: Principiante!");
         }
         if (puntos >= 1000 && !logros.contains("Experto")) {
             logros.add("Experto");
-            ConsoleUtils.mostrarMensaje("¡Logro desbloqueado: Experto!", 40, 20);
+            System.out.println("¡Logro desbloqueado: Experto!");
         }
         if (puntos >= 2000 && !logros.contains("Maestro")) {
             logros.add("Maestro");
-            ConsoleUtils.mostrarMensaje("¡Logro desbloqueado: Maestro del Sudoku!", 40, 20);
+            System.out.println("¡Logro desbloqueado: Maestro del Sudoku!");
         }
     }
 

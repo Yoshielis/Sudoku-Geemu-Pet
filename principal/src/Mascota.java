@@ -13,7 +13,6 @@ class Mascota implements Serializable {
     private int salud;
     private int energia;
     private LocalDate ultimaActualizacion;
-    private List<String> dialogos;
     private Random random;
 
     public Mascota(String nombre, String especie, String emoji) {
@@ -26,58 +25,28 @@ class Mascota implements Serializable {
         this.energia = 80;
         this.ultimaActualizacion = LocalDate.now();
         this.random = new Random();
-        this.dialogos = new ArrayList<>();
-
-        cargarDialogos();
     }
 
-    private void cargarDialogos() {
-        dialogos.add("¡Vamos, tú puedes!");
-        dialogos.add("¡Ese número va perfecto ahí!");
-        dialogos.add("Mmm... revisa esa columna");
-        dialogos.add("¡Excelente jugada!");
-        dialogos.add("La región 3x3 necesita atención");
-        dialogos.add("¡Sigue así, vas muy bien!");
-        dialogos.add("Recuerda: números únicos en cada fila");
-        dialogos.add("¡Woohoo! ¡Otra celda completada!");
-    }
-
-    public void mostrarEstadoCentrado() {
-        ConsoleUtils.clearScreen();
-        ConsoleUtils.dibujarMarco(50, 18);
-
-        ConsoleUtils.setCursorPosition(20, 3);
+    public void mostrarEstadoCompleto() {
         System.out.println(emoji + " " + nombre.toUpperCase() + " (" + especie + ") " + emoji);
-
-        ConsoleUtils.setCursorPosition(5, 5);
-        System.out.print("Hambre:    "); mostrarBarra(hambre, 30);
-
-        ConsoleUtils.setCursorPosition(5, 7);
-        System.out.print("Felicidad: "); mostrarBarra(felicidad, 30);
-
-        ConsoleUtils.setCursorPosition(5, 9);
-        System.out.print("Salud:     "); mostrarBarra(salud, 30);
-
-        ConsoleUtils.setCursorPosition(5, 11);
-        System.out.print("Energía:   "); mostrarBarra(energia, 30);
-
-        ConsoleUtils.setCursorPosition(5, 13);
+        System.out.print("Hambre:    "); mostrarBarra(hambre);
+        System.out.print("Felicidad: "); mostrarBarra(felicidad);
+        System.out.print("Salud:     "); mostrarBarra(salud);
+        System.out.print("Energía:   "); mostrarBarra(energia);
         System.out.println("Estado: " + getEstadoEmocional());
-
-        ConsoleUtils.setCursorPosition(5, 15);
-        System.out.println("Efecto en juego: " + getEfectoJuego());
+        System.out.println("Efecto: " + getEfectoJuego());
     }
 
     public void mostrarEstadoMini() {
-        String estado = nombre + " " + emoji + " [" + getEstadoEmocional() + "]";
-        ConsoleUtils.setCursorPosition(22, 15);
-        System.out.print("Mascota: " + estado);
+        System.out.print(nombre + " " + emoji + " [" + getEstadoEmocional() + "] ");
+        mostrarBarraMini(felicidad);
+        System.out.println();
     }
 
-    private void mostrarBarra(int valor, int longitud) {
-        int lleno = (valor * longitud) / 100;
+    private void mostrarBarra(int valor) {
+        int lleno = valor / 10;
         System.out.print("[");
-        for (int i = 0; i < longitud; i++) {
+        for (int i = 0; i < 10; i++) {
             if (i < lleno) {
                 System.out.print("█");
             } else {
@@ -87,7 +56,20 @@ class Mascota implements Serializable {
         System.out.println("] " + valor + "%");
     }
 
-    private String getEstadoEmocional() {
+    private void mostrarBarraMini(int valor) {
+        int lleno = valor / 20;
+        System.out.print("[");
+        for (int i = 0; i < 5; i++) {
+            if (i < lleno) {
+                System.out.print("█");
+            } else {
+                System.out.print("░");
+            }
+        }
+        System.out.print("]");
+    }
+
+    public String getEstadoEmocional() {
         if (salud < 30) return "😷 Enfermo";
         if (hambre > 80) return "😫 Hambriento";
         if (felicidad < 30) return "😔 Triste";
@@ -112,11 +94,9 @@ class Mascota implements Serializable {
     }
 
     public void jugar() {
-        felicidad = Math.min(100, felicidad + 25);  // Aumenta felicidad
-        energia = Math.max(0, energia - 20);        // Disminuye energía por jugar
-        hambre = Math.min(100, hambre + 15);        // Aumenta hambre
-
-        ConsoleUtils.mostrarMensaje("¡" + nombre + " está jugando contigo! La energía disminuye pero la felicidad aumenta.", 60, 20);
+        felicidad = Math.min(100, felicidad + 25);
+        energia = Math.max(0, energia - 20);
+        hambre = Math.min(100, hambre + 15);
     }
 
     public void curar() {
@@ -139,10 +119,18 @@ class Mascota implements Serializable {
     }
 
     public void darAnimo() {
-        if (!dialogos.isEmpty()) {
-            String dialogo = dialogos.get(random.nextInt(dialogos.size()));
-            ConsoleUtils.centrarTexto(emoji + " " + nombre + " dice: \"" + dialogo + "\"", 8);
-        }
+        String[] dialogos = {
+                "¡Vamos, tú puedes!",
+                "¡Ese número va perfecto ahí!",
+                "Mmm... revisa esa columna",
+                "¡Excelente jugada!",
+                "La región 3x3 necesita atención",
+                "¡Sigue así, vas muy bien!",
+                "Recuerda: números únicos en cada fila",
+                "¡Woohoo! ¡Otra celda completada!"
+        };
+
+        System.out.println(emoji + " " + nombre + " dice: \"" + dialogos[random.nextInt(dialogos.length)] + "\"");
     }
 
     public void darPista() {
@@ -152,8 +140,7 @@ class Mascota implements Serializable {
                 "Mira la región 3x3 superior derecha",
                 "¿Ya revisaste todos los números del 1 al 9 en esa área?"
         };
-        ConsoleUtils.mostrarMensaje(emoji + " " + nombre + " sugiere: " +
-                pistas[random.nextInt(pistas.length)], 60, 20);
+        System.out.println(emoji + " " + nombre + " sugiere: " + pistas[random.nextInt(pistas.length)]);
     }
 
     public void reaccionarError() {
@@ -163,7 +150,7 @@ class Mascota implements Serializable {
                 "No te preocupes, sigue intentando",
                 "Esa celda necesita un número diferente"
         };
-        ConsoleUtils.mostrarMensaje(emoji + " " + reacciones[random.nextInt(reacciones.length)], 50, 21);
+        System.out.println(emoji + " " + reacciones[random.nextInt(reacciones.length)]);
     }
 
     public void celebrar() {
@@ -173,21 +160,19 @@ class Mascota implements Serializable {
                 "¡Felicidades! " + nombre + " está muy orgulloso",
                 "¡Victoria! Los puntos están en camino"
         };
-        ConsoleUtils.centrarTexto(emoji + " " + celebraciones[random.nextInt(celebraciones.length)], 10);
-    }
-
-    public void saludar() {
-        ConsoleUtils.centrarTexto(emoji + " ¡Hola! Soy " + nombre + ", tu " + especie.toLowerCase() + " virtual.", 12);
+        System.out.println(emoji + " " + celebraciones[random.nextInt(celebraciones.length)]);
     }
 
     public void despedirse() {
-        ConsoleUtils.centrarTexto(emoji + " " + nombre + " dice: ¡Hasta pronto! Cuídate mucho.", 12);
+        System.out.println(emoji + " " + nombre + " dice: ¡Hasta pronto! Cuídate mucho.");
     }
 
-    // Getters y Setters
+    // Getters
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
     public String getEspecie() { return especie; }
     public int getFelicidad() { return felicidad; }
     public int getSalud() { return salud; }
 }
+
+
